@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Steel-Tip Darts Scorer</title>
+<style>
+  :root{
+    --board:#191512;        /* dartboard backing black */
+    --panel:#221d18;        /* raised panel */
+    --panel-2:#2c251f;      /* lighter panel */
+    --line:#3a322a;         /* hairline */
+    --chalk:#ECE3D0;        /* scoreboard chalk / cream */
+    --chalk-dim:#a99f8c;    /* muted chalk */
+    --brass:#C9A227;        /* spider wire / accent */
+    --red:#C0392B;          /* treble bed red */
+    --green:#1E7A4D;        /* double bed green */
+    --bust:#8a3326;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #241e18 0%, var(--board) 60%) fixed;
+    color:var(--chalk);
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    min-height:100vh;
+    padding:18px 14px 40px;
+  }
+  .wrap{max-width:760px;margin:0 auto;}
+
+  /* ---- shared display type: condensed scoreboard ---- */
+  .display{
+    font-family:"Arial Narrow","Helvetica Neue",Impact,sans-serif;
+    font-stretch:condensed;
+    letter-spacing:.5px;
+  }
+
+  header.masthead{
+    text-align:center;
+    margin-bottom:22px;
+  }
+  .masthead .eyebrow{
+    font-size:11px;letter-spacing:4px;text-transform:uppercase;
+    color:var(--brass);font-weight:600;
+  }
+  .masthead h1{
+    margin:4px 0 0;
+    font-family:"Arial Narrow","Helvetica Neue",Impact,sans-serif;
+    font-stretch:condensed;
+    font-size:34px;font-weight:800;letter-spacing:1px;
+    text-transform:uppercase;
+  }
+  .masthead h1 .x{color:var(--red);}
+  .masthead .rule{
+    height:2px;width:120px;margin:10px auto 0;
+    background:linear-gradient(90deg,transparent,var(--brass),transparent);
+  }
+
+  /* ---- panels ---- */
+  .panel{
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:18px;
+    margin-bottom:16px;
+    box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 10px 30px rgba(0,0,0,.35);
+  }
+  .panel h2{
+    margin:0 0 14px;font-size:13px;letter-spacing:2.5px;text-transform:uppercase;
+    color:var(--chalk-dim);font-weight:600;
+  }
+
+  /* ---- setup form ---- */
+  .field{margin-bottom:16px;}
+  .field > label{display:block;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--chalk-dim);margin-bottom:8px;}
+  .segment{display:flex;flex-wrap:wrap;gap:8px;}
+  .seg-btn{
+    flex:1 1 auto;min-width:64px;
+    background:var(--board);border:1px solid var(--line);color:var(--chalk);
+    padding:11px 10px;border-radius:10px;cursor:pointer;
+    font-size:15px;font-weight:600;transition:.12s;
+  }
+  .seg-btn:hover{border-color:var(--brass);}
+  .seg-btn.active{background:var(--brass);color:#1a1510;border-color:var(--brass);}
+  .toggle-row{display:flex;gap:10px;flex-wrap:wrap;}
+  .toggle{
+    display:flex;align-items:center;gap:10px;cursor:pointer;
+    background:var(--board);border:1px solid var(--line);border-radius:10px;
+    padding:11px 14px;flex:1 1 200px;
+  }
+  .toggle input{accent-color:var(--brass);width:18px;height:18px;cursor:pointer;}
+  .toggle span{font-size:14px;}
+  .toggle small{display:block;color:var(--chalk-dim);font-size:11px;}
+  .players-setup{display:flex;flex-direction:column;gap:9px;}
+  .players-setup input{
+    background:var(--board);border:1px solid var(--line);color:var(--chalk);
+    border-radius:9px;padding:11px 12px;font-size:15px;width:100%;
+  }
+  .players-setup input:focus{outline:2px solid var(--brass);outline-offset:1px;}
+
+  .btn{
+    border:none;border-radius:11px;cursor:pointer;font-weight:700;
+    font-size:15px;letter-spacing:.5px;padding:14px 18px;transition:.12s;
+  }
+  .btn-primary{background:var(--green);color:#eafff2;width:100%;}
+  .btn-primary:hover{filter:brightness(1.1);}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--chalk-dim);}
+  .btn-ghost:hover{border-color:var(--brass);color:var(--chalk);}
+
+  /* ---- scoreboard (players) ---- */
+  .scoreboard{display:grid;gap:12px;grid-template-columns:1fr;}
+  .scoreboard.cols-2{grid-template-columns:1fr 1fr;}
+  .pcard{
+    background:var(--board);border:1px solid var(--line);border-radius:12px;
+    padding:14px 14px 12px;position:relative;overflow:hidden;
+  }
+  .pcard.active{border-color:var(--brass);box-shadow:0 0 0 1px var(--brass), 0 0 26px rgba(201,162,39,.18);}
+  .pcard.active::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--brass);
+  }
+  .pcard .name{font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--chalk-dim);display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .pcard .legs{color:var(--brass);font-weight:700;letter-spacing:0;display:flex;align-items:center;gap:6px;white-space:nowrap;}
+  .pcard .legs .legnum{font-size:12px;}
+  .pips{display:inline-flex;gap:4px;}
+  .pip{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--brass);box-sizing:border-box;}
+  .pip.on{background:var(--brass);box-shadow:0 0 6px rgba(201,162,39,.5);}
+  .pcard .score{
+    font-family:"Arial Narrow","Helvetica Neue",Impact,sans-serif;font-stretch:condensed;
+    font-size:62px;line-height:1;font-weight:800;margin:6px 0 2px;
+  }
+  .pcard.active .score{color:var(--chalk);}
+  .pcard .meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:var(--chalk-dim);letter-spacing:.5px;}
+  .pcard .meta b{color:var(--chalk);font-weight:700;}
+  .legbar{
+    display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+    padding:8px 14px;margin-bottom:12px;border:1px solid var(--line);border-radius:10px;
+    background:linear-gradient(90deg, rgba(201,162,39,.08), transparent);
+  }
+  .legbar .leg-label{font-family:"Arial Narrow","Helvetica Neue",Impact,sans-serif;font-stretch:condensed;
+    font-size:20px;font-weight:800;letter-spacing:2px;color:var(--brass);}
+  .legbar .leg-format{font-size:11px;letter-spacing:.5px;color:var(--chalk-dim);text-transform:uppercase;text-align:right;}
+  .checkout-line{
+    margin-top:9px;padding-top:9px;border-top:1px dashed var(--line);
+    font-size:12px;color:var(--chalk-dim);min-height:18px;
+  }
+  .checkout-line b{color:var(--brass);letter-spacing:1px;}
+
+  /* ---- current turn strip ---- */
+  .turnstrip{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin-bottom:14px;
+  }
+  .turnstrip .darts{display:flex;gap:8px;}
+  .turnstrip .slot{
+    min-width:56px;text-align:center;background:var(--board);border:1px solid var(--line);
+    border-radius:8px;padding:8px 6px;font-weight:700;font-size:15px;color:var(--chalk-dim);
+  }
+  .turnstrip .slot.filled{color:var(--chalk);border-color:var(--brass);}
+  .turnstrip .slot.dbl{color:#7be0a8;}
+  .turnstrip .turntotal{text-align:right;}
+  .turnstrip .turntotal small{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--chalk-dim);}
+  .turnstrip .turntotal .v{font-family:"Arial Narrow",sans-serif;font-stretch:condensed;font-size:30px;font-weight:800;line-height:1;}
+
+  /* ---- input pad ---- */
+  .mult-row{display:flex;gap:8px;margin-bottom:10px;}
+  .mult-btn{
+    flex:1;padding:12px;border-radius:10px;border:1px solid var(--line);
+    background:var(--board);color:var(--chalk);font-weight:700;font-size:15px;cursor:pointer;letter-spacing:1px;transition:.1s;
+  }
+  .mult-btn[data-m="2"].active{background:var(--green);border-color:var(--green);color:#eafff2;}
+  .mult-btn[data-m="3"].active{background:var(--red);border-color:var(--red);color:#ffeae7;}
+  .mult-btn[data-m="1"].active{background:var(--brass);border-color:var(--brass);color:#1a1510;}
+  .numgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+  .num{
+    padding:14px 0;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel-2);color:var(--chalk);font-weight:700;font-size:17px;cursor:pointer;transition:.1s;
+  }
+  .num:hover{border-color:var(--brass);}
+  .num:disabled{opacity:.3;cursor:not-allowed;}
+  .special-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px;}
+  .num.miss{background:var(--board);color:var(--chalk-dim);}
+  .num.bull{background:var(--green);border-color:var(--green);color:#eafff2;}
+  .num.obull{background:var(--board);border-color:var(--green);color:#7be0a8;}
+
+  .action-row{display:flex;gap:8px;margin-top:12px;}
+  .action-row .btn{flex:1;padding:13px;}
+  .btn-enter{background:var(--brass);color:#1a1510;}
+  .btn-enter:hover{filter:brightness(1.08);}
+  .btn-enter:disabled{opacity:.4;cursor:not-allowed;}
+
+  .footer-row{display:flex;gap:8px;margin-top:14px;}
+  .footer-row .btn{flex:1;font-size:13px;padding:11px;}
+  .footer{display:flex;justify-content: center;flex-direction: column;justify-self: center;}
+  .footer-inner{display:flex;justify-content: center;}
+  .footer-inner-language{opacity: 0.1;display:flex;justify-content: center;}
+
+  /* ---- toast / banner ---- */
+  .banner{
+    text-align:center;border-radius:12px;padding:14px;margin-bottom:14px;font-weight:700;
+    letter-spacing:1px;display:none;
+  }
+  .banner.show{display:block;animation:pop .25s ease;}
+  .banner.bust{background:rgba(138,51,38,.18);border:1px solid var(--bust);color:#f0a99c;}
+  .banner.ton{background:rgba(201,162,39,.14);border:1px solid var(--brass);color:var(--brass);}
+  .banner.win{background:rgba(30,122,77,.18);border:1px solid var(--green);color:#8ff0bb;}
+  @keyframes pop{from{transform:scale(.96);opacity:0;}to{transform:scale(1);opacity:1;}}
+
+  .hidden{display:none !important;}
+  @media(max-width:560px){
+    .scoreboard.cols-2{grid-template-columns:1fr;}
+    .pcard .score{font-size:54px;}
+    .masthead h1{font-size:28px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">Steel-Tip</div>
+    <!-- <div class="eyebrow">Steel-Tip · Double-Out</div> -->
+    <h1 class="display">Dart<span class="x">s</span> Scorer</h1>
+    <!-- <h1 class="display">5<span class="x">0</span>1 Darts Scorer</h1> -->
+    <div class="rule"></div>
+  </header>
+
+  <!-- ============ SETUP ============ -->
+  <section id="setup">
+    <div class="panel">
+      <h2>Game</h2>
+      <div class="field">
+        <label>Starting score</label>
+        <div class="segment" id="gameType">
+          <button class="seg-btn" data-v="301">301</button>
+          <button class="seg-btn active" data-v="501">501</button>
+          <button class="seg-btn" data-v="701">701</button>
+          <button class="seg-btn" data-v="901">901</button>
+          <button class="seg-btn" data-v="1101">1101</button>
+          <button class="seg-btn" data-v="1501">1501</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>First to (legs)</label>
+        <div class="segment" id="legsType">
+          <button class="seg-btn active" data-v="1">1</button>
+          <button class="seg-btn" data-v="2">2</button>
+          <button class="seg-btn" data-v="3">3</button>
+          <button class="seg-btn" data-v="4">4</button>
+          <button class="seg-btn" data-v="5">5</button>
+          <button class="seg-btn" data-v="6">6</button>
+          <button class="seg-btn" data-v="7">7</button>
+          <button class="seg-btn" data-v="8">8</button>
+          <button class="seg-btn" data-v="9">9</button>
+          <button class="seg-btn" data-v="10">10</button>
+          <button class="seg-btn" data-v="11">11</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Rules</label>
+        <div class="toggle-row">
+          <label class="toggle">
+            <input type="checkbox" id="doubleOut" checked>
+            <span>Double out<small>Finish on a double or bull</small></span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="doubleIn">
+            <span>Double in<small>Score only after a double</small></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Players</h2>
+      <div class="field">
+        <label>How many</label>
+        <div class="segment" id="playerCount">
+          <button class="seg-btn active" data-v="1">1</button>
+          <button class="seg-btn" data-v="2">2</button>
+          <button class="seg-btn" data-v="3">3</button>
+          <button class="seg-btn" data-v="4">4</button>
+        </div>
+      </div>
+      <div class="players-setup" id="nameInputs"></div>
+    </div>
+
+    <button class="btn btn-primary" id="startBtn">Throw first dart</button>
+  </section>
+
+  <!-- ============ GAME ============ -->
+  <section id="game" class="hidden">
+    <div class="banner" id="banner"></div>
+
+    <div class="legbar" id="legBar"></div>
+
+    <div class="scoreboard" id="scoreboard"></div>
+
+    <div class="turnstrip">
+      <div class="darts" id="dartSlots">
+        <div class="slot">–</div><div class="slot">–</div><div class="slot">–</div>
+      </div>
+      <div class="turntotal"><small>This turn</small><div class="v" id="turnTotal">0</div></div>
+    </div>
+
+    <div class="panel" style="padding:14px;">
+      <div class="mult-row">
+        <button class="mult-btn active" data-m="1">SINGLE</button>
+        <button class="mult-btn" data-m="2">DOUBLE</button>
+        <button class="mult-btn" data-m="3">TREBLE</button>
+      </div>
+      <div class="numgrid" id="numGrid"></div>
+      <div class="special-row">
+        <button class="num miss" data-n="0" data-fixed="1">MISS</button>
+        <button class="num obull" data-n="25" data-fixed="1">25</button>
+        <button class="num bull" data-n="50" data-fixed="1" data-double="1">BULL</button>
+      </div>
+      <div class="action-row">
+        <button class="btn btn-ghost" id="undoDart">Undo dart</button>
+        <button class="btn btn-enter" id="enterTurn" disabled>Enter turn</button>
+      </div>
+    </div>
+
+    <div class="footer-row">
+      <button class="btn btn-ghost" id="undoTurn">Undo last turn</button>
+      <button class="btn btn-ghost" id="newGame">New game</button>
+    </div>
+  </section>
+
+</div>
+<div class="footer">
+  © 2024–2026 Isabelle. All rights reserved.
+  <!-- <div class="footer-inner"></div> -->
+  <div class="footer-inner-language">Vanilla JavaScript & HTML</div>
+</div>
+<script>
+"use strict";
+
+/* ---------------- Checkout solver (double-out) ---------------- */
+const FINISH_PREF=[20,16,8,4,2,12,10,18,14,6,11,9,13,15,17,19,7,5,3,1,25];
+const finishRank=k=>{const i=FINISH_PREF.indexOf(k);return i<0?99:i;};
+function buildDarts(){
+  const a=[];
+  for(let n=1;n<=20;n++){
+    a.push({label:String(n),value:n,mult:1,num:n,isDouble:false});
+    a.push({label:"D"+n,value:2*n,mult:2,num:n,isDouble:true});
+    a.push({label:"T"+n,value:3*n,mult:3,num:n,isDouble:false});
+  }
+  a.push({label:"25",value:25,mult:1,num:25,isDouble:false});
+  a.push({label:"Bull",value:50,mult:2,num:25,isDouble:true});
+  return a;
+}
+const DARTS=buildDarts();
+const FINISHERS=DARTS.filter(d=>d.isDouble);
+const _coCache={};
+function cmp(x,y){for(let i=0;i<x.length;i++){if(x[i]!==y[i])return x[i]<y[i]?-1:1;}return 0;}
+function checkout(score){
+  if(score<2||score>170) return null;
+  if(_coCache[score]!==undefined) return _coCache[score];
+  let best=null;
+  const consider=route=>{
+    const fin=route[route.length-1];
+    let setupQ=0;
+    for(let i=0;i<route.length-1;i++){
+      const d=route[i];
+      setupQ += d.value + (d.mult===3?6:0) + (d.mult===1?2:0) + (d.mult===2?-10:0);
+    }
+    const key=[route.length,-setupQ,finishRank(fin.num)];
+    if(!best||cmp(key,best.key)<0) best={key,route};
+  };
+  for(const f of FINISHERS) if(f.value===score) consider([f]);
+  for(const a of DARTS) for(const f of FINISHERS) if(a.value+f.value===score) consider([a,f]);
+  for(const a of DARTS){
+    for(const b of DARTS){
+      const p=a.value+b.value;
+      if(p>=score) continue;
+      for(const f of FINISHERS) if(p+f.value===score){consider([a,b,f]);}
+    }
+  }
+  let res=null;
+  if(best){
+    const route=best.route.slice();
+    const finisher=route.pop();
+    route.sort((a,b)=>b.value-a.value);
+    route.push(finisher);
+    res=route.map(d=>d.label);
+  }
+  _coCache[score]=res;
+  return res;
+}
+
+/* ---------------- State ---------------- */
+let G=null;
+
+/* ---------------- Setup wiring ---------------- */
+function segGroup(id,onChange){
+  const el=document.getElementById(id);
+  el.addEventListener("click",e=>{
+    const b=e.target.closest(".seg-btn"); if(!b) return;
+    [...el.children].forEach(c=>c.classList.remove("active"));
+    b.classList.add("active");
+    if(onChange) onChange(+b.dataset.v);
+  });
+}
+function segValue(id){return +document.getElementById(id).querySelector(".active").dataset.v;}
+
+function renderNameInputs(n){
+  const box=document.getElementById("nameInputs");
+  const existing=[...box.querySelectorAll("input")].map(i=>i.value);
+  box.innerHTML="";
+  for(let i=0;i<n;i++){
+    const inp=document.createElement("input");
+    inp.type="text";inp.placeholder="Player "+(i+1);
+    inp.value=existing[i]||"";
+    box.appendChild(inp);
+  }
+}
+segGroup("gameType");
+segGroup("legsType");
+segGroup("playerCount",renderNameInputs);
+renderNameInputs(1);
+
+document.getElementById("startBtn").addEventListener("click",startGame);
+
+function startGame(){
+  const start=segValue("gameType");
+  const legsToWin=segValue("legsType");
+  const doubleOut=document.getElementById("doubleOut").checked;
+  const doubleIn=document.getElementById("doubleIn").checked;
+  const names=[...document.querySelectorAll("#nameInputs input")].map((i,idx)=>i.value.trim()||("Player "+(idx+1)));
+  G={
+    start,legsToWin,doubleOut,doubleIn,
+    players:names.map(name=>({name,score:start,legs:0,dartsThrown:0,totalScored:0,lastTurn:null,opened:!doubleIn,
+      first9Points:0,first9Darts:0,legTurns:0})),
+    current:0,starter:0,
+    turn:{darts:[],startScore:start},
+    mult:1,
+    history:[],   // snapshots for undo-turn
+    over:false
+  };
+  document.getElementById("setup").classList.add("hidden");
+  document.getElementById("game").classList.remove("hidden");
+  buildNumGrid();
+  beginTurn();   // seeds turn, double-in flag and the first undo snapshot
+  render();
+}
+
+/* ---------------- Number pad ---------------- */
+function buildNumGrid(){
+  const g=document.getElementById("numGrid");
+  g.innerHTML="";
+  for(let n=1;n<=20;n++){
+    const b=document.createElement("button");
+    b.className="num";b.dataset.n=n;b.textContent=n;
+    g.appendChild(b);
+  }
+}
+document.getElementById("numGrid").addEventListener("click",e=>{
+  const b=e.target.closest(".num"); if(!b||b.disabled) return;
+  registerDart(+b.dataset.n,G.mult,false);
+});
+document.querySelector(".special-row").addEventListener("click",e=>{
+  const b=e.target.closest(".num"); if(!b) return;
+  const n=+b.dataset.n;
+  const isDouble=b.dataset.double==="1";
+  registerDart(n,1,isDouble); // fixed-value buttons ignore multiplier; bull flagged double
+});
+document.querySelector(".mult-row").addEventListener("click",e=>{
+  const b=e.target.closest(".mult-btn"); if(!b) return;
+  G.mult=+b.dataset.m;
+  document.querySelectorAll(".mult-btn").forEach(x=>x.classList.toggle("active",x===b));
+});
+document.getElementById("undoDart").addEventListener("click",undoDart);
+document.getElementById("enterTurn").addEventListener("click",()=>endTurn(false));
+document.getElementById("undoTurn").addEventListener("click",undoTurn);
+document.getElementById("newGame").addEventListener("click",()=>{
+  document.getElementById("game").classList.add("hidden");
+  document.getElementById("setup").classList.remove("hidden");
+  clearBanner();
+});
+
+/* ---------------- Dart handling ---------------- */
+function dartValue(num,mult,fixedDouble){
+  // returns {value,isDouble,label}
+  if(num===0) return {value:0,isDouble:false,label:"Miss"};
+  if(num===50) return {value:50,isDouble:true,label:"Bull"};
+  if(num===25) return {value:25,isDouble:false,label:"25"};
+  const value=num*mult;
+  const isDouble=mult===2 || fixedDouble===true;
+  const pre=mult===2?"D":mult===3?"T":"";
+  return {value,isDouble,label:pre+num};
+}
+
+function registerDart(num,mult,fixedDouble){
+  if(G.over) return;
+  if(G.turn.darts.length>=3) return;
+  const d=dartValue(num,mult,fixedDouble);
+  G.turn.darts.push(d);
+  G.mult=1; // reset multiplier to single after each dart
+  syncMultButtons();
+
+  const p=G.players[G.current];
+  // double-in gate is handled in turnCountedTotal; just update opened status here
+  if(G.doubleIn && !p.opened && d.isDouble){ p.opened=true; }
+  // tentative remaining using all darts this turn that count
+  const counted=turnCountedTotal();
+  const remaining=G.turn.startScore-counted;
+
+  // evaluate immediately
+  if(remaining<0 || (G.doubleOut && remaining===1)){
+    render(); flashBanner("bust","BUST · no score"); endTurn(true); return;
+  }
+  if(remaining===0){
+    if(!G.doubleOut || d.isDouble){
+      render(); winLeg(); return;
+    } else {
+      render(); flashBanner("bust","BUST · must finish on a double"); endTurn(true); return;
+    }
+  }
+  render();
+  if(G.turn.darts.length===3){ endTurn(false); }
+}
+
+function turnCountedTotal(){
+  // sum of darts that count toward the score, honouring double-in opening mid-turn
+  const p=G.players[G.current];
+  let opened=p.opened; // current opened status reflects darts already processed
+  // We must recompute from scratch because opened may have toggled during this turn.
+  // Reconstruct: opened-before-turn:
+  let openedBefore = G.doubleIn ? G._openedBeforeTurn : true;
+  let total=0, isOpen=openedBefore;
+  for(const d of G.turn.darts){
+    if(G.doubleIn && !isOpen){
+      if(d.isDouble){ isOpen=true; total+=d.value; }
+    } else {
+      total+=d.value;
+    }
+  }
+  return total;
+}
+
+function undoDart(){
+  if(!G.turn.darts.length) return;
+  G.turn.darts.pop();
+  // re-derive opened status for double-in
+  if(G.doubleIn){
+    const p=G.players[G.current];
+    let isOpen=G._openedBeforeTurn;
+    for(const d of G.turn.darts){ if(!isOpen && d.isDouble) isOpen=true; }
+    p.opened=isOpen;
+  }
+  render();
+}
+
+function endTurn(busted){
+  const p=G.players[G.current];
+  const counted=busted?0:turnCountedTotal();
+  if(!busted){
+    p.score-=counted;
+    p.totalScored+=counted;
+    p.lastTurn=counted;
+  } else {
+    p.lastTurn=0; // visual: bust shows 0
+  }
+  p.dartsThrown+=G.turn.darts.length;
+  recordTurnStats(p,counted,G.turn.darts.length);
+  advancePlayer();
+}
+
+// First-9-dart tracking: the opening three turns of each leg form the
+// first-9 window. Points and darts within that window feed the first-9 average.
+function recordTurnStats(p,counted,n){
+  if(p.legTurns<3){
+    p.first9Points+=counted;
+    p.first9Darts+=n;
+  }
+  p.legTurns++;
+}
+
+function advancePlayer(){
+  // snapshot for undo BEFORE moving on is taken at turn start; here just move
+  G.current=(G.current+1)%G.players.length;
+  beginTurn();
+  render();
+}
+
+function beginTurn(){
+  const p=G.players[G.current];
+  G.turn={darts:[],startScore:p.score};
+  G._openedBeforeTurn = G.doubleIn ? p.opened : true;
+  pushHistory(); // snapshot at start of each fresh turn for undo
+}
+
+/* ---------------- Undo last turn ---------------- */
+function pushHistory(){
+  // store a deep-ish snapshot
+  G.history.push(JSON.stringify({
+    players:G.players,current:G.current,starter:G.starter,over:G.over
+  }));
+  if(G.history.length>60) G.history.shift();
+}
+function undoTurn(){
+  if(G.over){G.over=false;clearBanner();}
+  // need the snapshot taken at the START of the previous turn -> pop current, then restore previous
+  if(G.history.length<2){ // nothing meaningful to undo
+    flashBanner("","",true);
+    return;
+  }
+  G.history.pop();             // discard current turn-start snapshot
+  const snap=JSON.parse(G.history[G.history.length-1]);
+  G.players=snap.players;
+  G.current=snap.current;
+  G.starter=snap.starter;
+  G.over=false;
+  const p=G.players[G.current];
+  G.turn={darts:[],startScore:p.score};
+  G._openedBeforeTurn=G.doubleIn?p.opened:true;
+  clearBanner();
+  render();
+}
+
+/* ---------------- Win / legs ---------------- */
+function winLeg(){
+  const p=G.players[G.current];
+  p.score=0;
+  p.dartsThrown+=G.turn.darts.length;
+  p.totalScored+=G.turn.startScore; // the full remaining was checked out
+  p.lastTurn=G.turn.startScore;
+  recordTurnStats(p,G.turn.startScore,G.turn.darts.length);
+  p.legs++;
+  if(p.legs>=G.legsToWin){
+    G.over=true;
+    pushHistory();   // freeze end-state so undo is uniform
+    render();
+    flashBanner("win",p.name.toUpperCase()+" WINS THE MATCH · "+p.legs+"–"+maxOpponentLegs(p)+" legs");
+    lockPad(true);
+    return;
+  }
+  // next leg: reset scores, alternate starter
+  flashBanner("win",p.name.toUpperCase()+" takes the leg");
+  G.starter=(G.starter+1)%G.players.length;
+  G.players.forEach(pl=>{pl.score=G.start;pl.opened=!G.doubleIn;pl.lastTurn=null;pl.legTurns=0;});
+  G.current=G.starter;
+  beginTurn();
+  render();
+}
+function maxOpponentLegs(p){
+  return Math.max(0,...G.players.filter(x=>x!==p).map(x=>x.legs));
+}
+
+/* ---------------- Banner ---------------- */
+let bannerTimer=null;
+function flashBanner(cls,text,silent){
+  const b=document.getElementById("banner");
+  clearTimeout(bannerTimer);
+  if(silent){return;}
+  b.className="banner show "+cls;
+  b.textContent=text;
+  if(cls!=="win"){
+    bannerTimer=setTimeout(clearBanner,2600);
+  }
+}
+function clearBanner(){
+  const b=document.getElementById("banner");
+  b.className="banner";b.textContent="";
+}
+
+/* ---------------- Pad lock ---------------- */
+function lockPad(lock){
+  document.querySelectorAll("#numGrid .num,.special-row .num,.mult-btn,#enterTurn,#undoDart")
+    .forEach(el=>el.disabled=lock&&el.id!=="undoDart");
+}
+function syncMultButtons(){
+  document.querySelectorAll(".mult-btn").forEach(x=>x.classList.toggle("active",+x.dataset.m===G.mult));
+}
+
+/* ---------------- Render ---------------- */
+function render(){
+  if(!G) return;
+  // leg indicator
+  const legBar=document.getElementById("legBar");
+  if(legBar){
+    const legNo=Math.min(G.legsToWin*G.players.length, G.players.reduce((s,p)=>s+p.legs,0)+(G.over?0:1));
+    legBar.innerHTML='<span class="leg-label">LEG '+legNo+'</span>'+
+      '<span class="leg-format">'+(G.legsToWin>1?("First to "+G.legsToWin+" legs"):"Single leg")+
+      ' · '+G.start+' · '+(G.doubleOut?"double out":"straight out")+(G.doubleIn?" · double in":"")+'</span>';
+  }
+  // scoreboard
+  const sb=document.getElementById("scoreboard");
+  sb.className="scoreboard"+(G.players.length>1?" cols-2":"");
+  sb.innerHTML="";
+  G.players.forEach((p,i)=>{
+    const card=document.createElement("div");
+    card.className="pcard"+(i===G.current&&!G.over?" active":"");
+    const avg=p.dartsThrown?((p.totalScored/p.dartsThrown)*3).toFixed(1):"–";
+    const f9=p.first9Darts?((p.first9Points/p.first9Darts)*3).toFixed(1):"–";
+    let coText="";
+    if(G.doubleOut && p.score>=2 && p.score<=170){
+      const co=checkout(p.score);
+      coText=co?("Checkout · <b>"+co.join("  ")+"</b>"):"No checkout";
+    } else if(!G.doubleOut && p.score<=180 && p.score>0){
+      coText="Open finish";
+    } else if(p.score>170){
+      coText="";
+    }
+    const needDouble=(G.doubleIn&&!p.opened)?'<span style="color:var(--green)"> · must double in</span>':"";
+    card.innerHTML=
+      '<div class="name"><span class="pname">'+escapeHtml(p.name)+'</span>'+
+        '<span class="legs">'+legPips(p.legs,G.legsToWin)+
+        '<span class="legnum">'+p.legs+(G.legsToWin>1?" / "+G.legsToWin:"")+'</span></span></div>'+
+      '<div class="score display">'+p.score+'</div>'+
+      '<div class="meta"><span>Avg <b>'+avg+'</b></span>'+
+        '<span>1st-9 <b>'+f9+'</b></span>'+
+        '<span>Darts <b>'+p.dartsThrown+'</b></span>'+
+        '<span>Last <b>'+(p.lastTurn===null?"–":p.lastTurn)+'</b></span></div>'+
+      '<div class="checkout-line">'+coText+needDouble+'</div>';
+    sb.appendChild(card);
+  });
+
+  // current turn strip
+  const slots=document.getElementById("dartSlots");
+  slots.innerHTML="";
+  for(let i=0;i<3;i++){
+    const d=G.turn.darts[i];
+    const s=document.createElement("div");
+    s.className="slot"+(d?" filled":"")+(d&&d.isDouble?" dbl":"");
+    s.textContent=d?d.label:"–";
+    slots.appendChild(s);
+  }
+  document.getElementById("turnTotal").textContent=G.turn.darts.reduce((a,d)=>a+d.value,0);
+
+  document.getElementById("enterTurn").disabled=(G.turn.darts.length===0)||G.over;
+  if(!G.over) lockPad(false);
+}
+
+function legPips(won,total){
+  let s='<span class="pips">';
+  for(let i=0;i<total;i++){ s+='<span class="pip'+(i<won?' on':'')+'"></span>'; }
+  return s+'</span>';
+}
+function escapeHtml(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+/* init multiplier highlight on load of game already handled in startGame->render */
+</script>
+</body>
+</html>
